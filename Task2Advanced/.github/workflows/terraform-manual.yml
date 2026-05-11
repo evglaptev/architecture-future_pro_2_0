@@ -1,0 +1,119 @@
+name: 'Terraform Manual Deployment'
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        type: choice
+        options:
+        - dev
+        - stage
+        - prod
+      action:
+        description: 'Action to perform'
+        required: true
+        type: choice
+        options:
+        - plan
+        - apply
+        - destroy
+      auto_approve:
+        description: 'Auto approve (only for apply/destroy)'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  TF_VERSION: '1.5.7'
+  TF_ROOT: 'Task2Advanced'
+
+jobs:
+  terraform:
+    name: 'Terraform ${{ github.event.inputs.action }} - ${{ github.event.inputs.environment }}'
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    defaults:
+      run:
+        working-directory: ${{ env.TF_ROOT }}
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ env.TF_VERSION }}
+
+    - name: Configure AWS credentials for S3 backend
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.YC_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.YC_SECRET_ACCESS_KEY }}
+        aws-region: ru-central1
+
+    - name: Terraform Init
+      run: |
+        cd envs/${{ github.event.inputs.environment }}
+        terraform init \
+          -backend-config="access_key=${{ secrets.YC_ACCESS_KEY_ID }}" \
+          -backend-config="secret_key=${{ secrets.YC_SECRET_ACCESS_KEY }}"
+
+    - name: Terraform Plan
+      if: github.event.inputs.action == 'plan'
+      run: |
+        cd envs/${{ github.event.inputs.environment }}
+        terraform plan \
+          -var="yandex_token=${{ secrets.YANDEX_TOKEN }}" \
+          -var="cloud_id=${{ secrets.YC_CLOUD_ID }}" \
+          -var="folder_id=${{ secrets.YC_FOLDER_ID }}" \
+          -var="subnet_id=${{ secrets.YC_SUBNET_ID }}" \
+          -var="ssh_public_key=${{ secrets.SSH_PUBLIC_KEY }}"
+
+    - name: Terraform Apply
+      if: github.event.inputs.action == 'apply'
+      run: |
+        cd envs/${{ github.event.inputs.environment }}
+        if [ "${{ github.event.inputs.auto_approve }}" == "true" ]; then
+          terraform apply -auto-approve \
+            -var="yandex_token=${{ secrets.YANDEX_TOKEN }}" \
+            -var="cloud_id=${{ secrets.YC_CLOUD_ID }}" \
+            -var="folder_id=${{ secrets.YC_FOLDER_ID }}" \
+            -var="subnet_id=${{ secrets.YC_SUBNET_ID }}" \
+            -var="ssh_public_key=${{ secrets.SSH_PUBLIC_KEY }}"
+        else
+          terraform apply \
+            -var="yandex_token=${{ secrets.YANDEX_TOKEN }}" \
+            -var="cloud_id=${{ secrets.YC_CLOUD_ID }}" \
+            -var="folder_id=${{ secrets.YC_FOLDER_ID }}" \
+            -var="subnet_id=${{ secrets.YC_SUBNET_ID }}" \
+            -var="ssh_public_key=${{ secrets.SSH_PUBLIC_KEY }}"
+        fi
+
+    - name: Terraform Destroy
+      if: github.event.inputs.action == 'destroy'
+      run: |
+        cd envs/${{ github.event.inputs.environment }}
+        if [ "${{ github.event.inputs.auto_approve }}" == "true" ]; then
+          terraform destroy -auto-approve \
+            -var="yandex_token=${{ secrets.YANDEX_TOKEN }}" \
+            -var="cloud_id=${{ secrets.YC_CLOUD_ID }}" \
+            -var="folder_id=${{ secrets.YC_FOLDER_ID }}" \
+            -var="subnet_id=${{ secrets.YC_SUBNET_ID }}" \
+            -var="ssh_public_key=${{ secrets.SSH_PUBLIC_KEY }}"
+        else
+          terraform destroy \
+            -var="yandex_token=${{ secrets.YANDEX_TOKEN }}" \
+            -var="cloud_id=${{ secrets.YC_CLOUD_ID }}" \
+            -var="folder_id=${{ secrets.YC_FOLDER_ID }}" \
+            -var="subnet_id=${{ secrets.YC_SUBNET_ID }}" \
+            -var="ssh_public_key=${{ secrets.SSH_PUBLIC_KEY }}"
+        fi
+
+    - name: Terraform Output
+      if: github.event.inputs.action == 'apply'
+      run: |
+        cd envs/${{ github.event.inputs.environment }}
+        terraform output

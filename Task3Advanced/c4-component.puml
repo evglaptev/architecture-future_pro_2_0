@@ -1,0 +1,33 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+LAYOUT_TOP_DOWN()
+
+Container_Boundary(portal, "Self-service Data Portal") {
+  Component(authSvc, "Access Gateway", "Keycloak Adapter", "SSO, mTLS, fine-grained scopes")
+  Component(querySvc, "Query Orchestrator", "Go + GraphQL", "Фильтрует запросы, применяет data policies")
+  Component(catalogSvc, "Data Catalog UI", "React + Apollo", "Навигация по дата-продуктам, предварительный просмотр")
+  Component(reportBuilder, "Composable Report Builder", "React + Vega", "Constructor для дашбордов и выгрузок")
+  Component(notebookProxy, "Secure Notebook Proxy", "JupyterHub", "Запуск управляемых ноутбуков в доменных песочницах")
+  Component(auditSvc, "Usage Ledger", "Kafka + ClickHouse", "Логирование всех действий и выдача метрик FinOps")
+}
+
+Container_Ext(dataMesh, "Data Mesh Platform", "Lakehouse + dbt", "Каталог схем и самодостаточные дата-продукты")
+Container_Ext(idp, "Corporate IdP", "AD/IDO", "Корпоративная аутентификация")
+Container_Ext(alerting, "Alerting System", "Opsgenie", "Уведомления о SLA")
+
+Rel(authSvc, idp, "OIDC / SAML")
+Rel(querySvc, dataMesh, "Trino/Presto + Delta Sharing", "Запросы и выдача датасетов")
+Rel(catalogSvc, dataMesh, "GraphQL federation", "Метаданные, описания, SLA")
+Rel(reportBuilder, querySvc, "GraphQL")
+Rel(notebookProxy, querySvc, "Signed query links")
+Rel(reportBuilder, auditSvc, "Трекинг обращений")
+Rel(querySvc, auditSvc, "Логирование запросов")
+Rel(auditSvc, alerting, "SLA breaches", "Webhooks")
+
+Rel(dataSteward, catalogSvc, "Публикует дата-продукты")
+Rel(dataSteward, reportBuilder, "Собирает отчёты")
+Rel(clinicianUser, reportBuilder, "Потребляет отчёты", "Role-based filters")
+
+@enduml
+
