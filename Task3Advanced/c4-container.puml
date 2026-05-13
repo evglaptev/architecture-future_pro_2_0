@@ -13,12 +13,13 @@ System_Boundary(futureCloud, "Future 2.0 Cloud") {
   Container(medApi, "Medical Services API", "Go + gRPC", "Доменные операции медицины")
   Container(finApi, "Fintech API", "Java + Spring", "Кредиты, платежи, KYC")
   Container(eventMesh, "Event Backbone", "Kafka + Schema Registry", "Общая шина событий")
-  Container(streamEtl, "Streaming ETL", "Apache Flink", "Трансформация потоков в витрины")
+  Container(streamEtl, "Streaming ETL", "Apache Flink", "Трансформация потоков в витрины, валидация ФЛК")
+  Container(batchOrchestrator, "Batch Orchestrator", "Apache Airflow", "Пакетная загрузка файлов, исторические пересчёты")
   Container(dataMesh, "Data Mesh Platform", "Lakehouse + dbt + Delta", "Каталог данных и управление продуктами")
   Container(selfBi, "Self-service Data Portal", "React + GraphQL Gateway", "Конструктор отчётов и датасетов")
   Container(aiPlatform, "AI Workbench", "Python ML Platform", "Тренировка и доставка моделей")
   Container(infraOps, "Observability Stack", "Prometheus + Loki + Tempo", "Мониторинг и аудит")
-  Container(legacyBridge, "Compatibility Bridge", "SQL Server 2008 + Camel", "Промежуточный слой к легаси DWH")
+  Container(legacyBridge, "Compatibility Bridge", "SQL Server 2008 + Camel", "Промежуточный слой к легаси DWH (read-only)")
 }
 
 System_Ext(pharma, "Pharma Clouds", "REST/SFTP", "Производители лекарств")
@@ -37,20 +38,17 @@ Rel(finApi, eventMesh, "Публикует события кредитов и п
 Rel(iotDevices, eventMesh, "Передаёт телеметрию", "MQTT gateway")
 
 Rel(eventMesh, streamEtl, "Потоки событий")
-Rel(streamEtl, dataMesh, "Заполняет дата-продукты", "Delta tables")
+Rel(eventMesh, batchOrchestrator, "События для пакетной обработки", "опционально")
+Rel(batchOrchestrator, dataMesh, "Заполняет дата-продукты", "Delta tables")
+Rel(streamEtl, dataMesh, "Заполняет витрины в real-time", "Delta tables")
 Rel(dataMesh, selfBi, "SQL/GraphQL", "Доступ к витринам")
 Rel(aiPlatform, eventMesh, "Слушает клинические события", "Feature streams")
 Rel(aiPlatform, dataMesh, "Обогащает фичами")
 Rel(selfBi, legacyBridge, "read-only", "Временный доступ к старым данным")
 Rel(finApi, cardNetworks, "ISO 8583", "Платежи")
-Rel(pharma, legacyBridge, "batch export", "Пока в миграции")
+Rel(pharma, batchOrchestrator, "SFTP/CSV", "batch-выгрузки (временно)")
 Rel(infraOps, eventMesh, "Metrics & traces")
 
-Boundary(note, "Через 3 года") {
-  Container(eventHub, "Domain Event Hub", "Kafka + AsyncAPI", "Единственный способ интеграции")
-}
-
-Rel(eventHub, legacyBridge, "Вытесняет мост совместимости", "поэтапная миграция")
-
+' Поэтапное вытеснение легаси
+Rel(legacyBridge, eventMesh, "Публикует события из старого DWH", "планируется отключение через 2 года")
 @enduml
-

@@ -1,0 +1,57 @@
+@startuml
+skinparam rectangle {
+  BackgroundColor<<Core>> #e1f5fe
+  BackgroundColor<<Supporting>> #e8f5e9
+  BackgroundColor<<Generic>> #f3e5f5
+  BorderColor Black
+}
+
+rectangle "Patient Care\n(Clinical Ops)" <<Core>> as patientCare
+rectangle "Diagnostics AI\n(ModelOps)" <<Supporting>> as diagnostics
+rectangle "Pharma Supply\n(Logistics)" <<Supporting>> as pharma
+rectangle "Fintech Lending\n(Credit & Risk)" <<Core>> as lending
+rectangle "Payments & Billing\n(Treasury)" <<Supporting>> as payments
+rectangle "Data Mesh Platform\n(Data Products)" <<Generic>> as dataMesh
+rectangle "Compliance & Trust\n(Governance)" <<Generic>> as governance
+rectangle "Customer 360\n(Engagement)" <<Supporting>> as customer360
+
+patientCare -down-> diagnostics : Clinical measurements\nEvents (Kafka)
+diagnostics -down-> patientCare : AI Insights\n(Command/Query)
+patientCare -down-> pharma : Therapy plan\nAPI
+pharma -down-> patientCare : Batch availability\nEvents
+patientCare -down-> lending : Treatment cost estimate\nCommand
+lending -down-> payments : PaymentScheduleCreated\nEvent
+payments -down-> lending : PaymentSettled\nEvent
+lending -down-> dataMesh : CreditContractCreated\nEvent Stream
+payments -down-> dataMesh : LedgerBalanced\nEvent Stream
+patientCare -down-> dataMesh : CaseClosed\nEvent Stream
+diagnostics -down-> dataMesh : AIReportPublished\nEvent Stream
+pharma -down-> dataMesh : DrugBatchReceived\nEvent Stream
+
+dataMesh -down-> governance : Policies, data contracts
+governance -down-> dataMesh : Access decisions, lineage
+
+customer360 -down-> patientCare : Engagement campaigns\nAPI
+customer360 -down-> lending : Cross-sell opportunities\nEvent
+customer360 -down-> dataMesh : CustomerSegmentUpdated\nEvent
+
+note right of patientCare
+Bounded contexts внутри домена:
+- Patient Profile
+- Therapy Case
+- Scheduling
+end note
+
+note right of lending
+Bounded contexts:
+- Loan Origination
+- KYC/KYB
+- Risk Scoring
+end note
+
+note right of dataMesh
+Содержит каталоги, политики, self-service portal и pipeline шаблоны данных
+end note
+
+@enduml
+
