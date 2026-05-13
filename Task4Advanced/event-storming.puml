@@ -1,0 +1,77 @@
+@startuml
+left to right direction
+skinparam rectangle {
+  BackgroundColor #fafafa
+}
+skinparam note {
+  BackgroundColor #fff8e1
+}
+
+rectangle "Patient Flow" as PF {
+  hexagon "Event:\nPatientRegistered" as e_patient_registered
+  hexagon "Event:\nClinicalCaseOpened" as e_case_opened
+  hexagon "Event:\nClinicalObservationCaptured" as e_observation
+  hexagon "Event:\nCaseClosed" as e_case_closed
+}
+
+rectangle "Diagnostics AI" as AI {
+  hexagon "Event:\nAIStudySubmitted" as e_ai_submitted
+  hexagon "Event:\nAIReportPublished" as e_ai_report
+}
+
+rectangle "Fintech Lending" as FL {
+  hexagon "Event:\nCreditApplicationCreated" as e_credit_app
+  hexagon "Event:\nCreditContractCreated" as e_credit_created
+  hexagon "Event:\nPaymentScheduleGenerated" as e_schedule
+  hexagon "Event:\nInstalmentPaid" as e_payment
+}
+
+rectangle "Payments" as PAY {
+  hexagon "Event:\nPaymentAuthorized" as e_pay_auth
+  hexagon "Event:\nPaymentSettled" as e_pay_settled
+}
+
+rectangle "Pharma Supply" as PS {
+  hexagon "Event:\nDrugBatchDispatched" as e_batch_dispatch
+  hexagon "Event:\nDrugBatchReceived" as e_batch_received
+}
+
+rectangle "Data Mesh Products" as DM {
+  hexagon "Event:\nDataProductPublished" as e_product_published
+  hexagon "Event:\nDataQualityAlertRaised" as e_dq_alert
+}
+
+rectangle "Customer 360" as C360 {
+  hexagon "Event:\nCustomerSegmentUpdated" as e_segment
+  hexagon "Event:\nEngagementCampaignTriggered" as e_campaign
+}
+
+e_patient_registered --> e_credit_app : "Policy: Offer financing"
+e_credit_app --> e_credit_created : "Command: ApproveCredit"
+e_credit_created --> e_schedule
+e_schedule --> e_pay_auth
+e_pay_auth --> e_pay_settled
+e_pay_settled --> e_payment
+e_payment --> e_case_closed : "Policy: Release discharge docs"
+
+e_case_opened --> e_ai_submitted : "Command: RequestAIStudy"
+e_ai_submitted --> e_ai_report
+e_ai_report --> e_observation : "Policy: Attach AI findings"
+
+e_batch_dispatch --> e_batch_received
+e_batch_received --> e_observation : "Policy: Update medication availability"
+
+e_case_closed --> e_product_published : "Command: Publish Case KPI"
+e_pay_settled --> e_product_published : "Financial dataset refresh"
+e_ai_report --> e_product_published : "Diagnostic features"
+e_product_published --> e_segment
+e_segment --> e_campaign
+e_dq_alert --> e_campaign : "Pause campaign if data degraded"
+
+note bottom
+Events с префиксом "Event" отражают ключевые факты, между ними встроены implicit policies/commands.
+Домен-источник публикует события в Kafka, подписчики реагируют на них action-политиками.
+end note
+
+@enduml
+

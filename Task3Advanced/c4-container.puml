@@ -1,0 +1,54 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+LAYOUT_LEFT_RIGHT()
+
+Person(clinician, "Clinic Operator", "Работает с медицинскими данными")
+Person(bankOfficer, "Bank Officer", "Управляет финтех продуктами")
+Person(dataSteward, "Data Steward", "Отвечает за доменные витрины")
+Person(pharmaPartner, "Pharma Partner", "Обменивается данными поставок")
+
+System_Boundary(futureCloud, "Future 2.0 Cloud") {
+  Container(frontDoor, "Digital Front Door", "Next.js + BFF", "Единый канал клиентских запросов")
+  Container(medApi, "Medical Services API", "Go + gRPC", "Доменные операции медицины")
+  Container(finApi, "Fintech API", "Java + Spring", "Кредиты, платежи, KYC")
+  Container(eventMesh, "Event Backbone", "Kafka + Schema Registry", "Общая шина событий")
+  Container(streamEtl, "Streaming ETL", "Apache Flink", "Трансформация потоков в витрины, валидация ФЛК")
+  Container(batchOrchestrator, "Batch Orchestrator", "Apache Airflow", "Пакетная загрузка файлов, исторические пересчёты")
+  Container(dataMesh, "Data Mesh Platform", "Lakehouse + dbt + Delta", "Каталог данных и управление продуктами")
+  Container(selfBi, "Self-service Data Portal", "React + GraphQL Gateway", "Конструктор отчётов и датасетов")
+  Container(aiPlatform, "AI Workbench", "Python ML Platform", "Тренировка и доставка моделей")
+  Container(infraOps, "Observability Stack", "Prometheus + Loki + Tempo", "Мониторинг и аудит")
+  Container(legacyBridge, "Compatibility Bridge", "SQL Server 2008 + Camel", "Промежуточный слой к легаси DWH (read-only)")
+}
+
+System_Ext(pharma, "Pharma Clouds", "REST/SFTP", "Производители лекарств")
+System_Ext(iotDevices, "Medical IoT Fleet", "MQTT", "Сенсоры и оборудование")
+System_Ext(cardNetworks, "Card Schemes", "ISO 8583", "Платёжные сети")
+
+Rel(clinician, frontDoor, "Записывает пациентов, просматривает статусы")
+Rel(bankOfficer, finApi, "Управляет продуктами")
+Rel(dataSteward, selfBi, "Настраивает витрины")
+Rel(pharmaPartner, eventMesh, "Публикует статусы поставок", "Domain Events")
+
+Rel(frontDoor, medApi, "REST/gRPC")
+Rel(frontDoor, finApi, "REST/gRPC")
+Rel(medApi, eventMesh, "Публикует события пациентов")
+Rel(finApi, eventMesh, "Публикует события кредитов и платежей")
+Rel(iotDevices, eventMesh, "Передаёт телеметрию", "MQTT gateway")
+
+Rel(eventMesh, streamEtl, "Потоки событий")
+Rel(eventMesh, batchOrchestrator, "События для пакетной обработки", "опционально")
+Rel(batchOrchestrator, dataMesh, "Заполняет дата-продукты", "Delta tables")
+Rel(streamEtl, dataMesh, "Заполняет витрины в real-time", "Delta tables")
+Rel(dataMesh, selfBi, "SQL/GraphQL", "Доступ к витринам")
+Rel(aiPlatform, eventMesh, "Слушает клинические события", "Feature streams")
+Rel(aiPlatform, dataMesh, "Обогащает фичами")
+Rel(selfBi, legacyBridge, "read-only", "Временный доступ к старым данным")
+Rel(finApi, cardNetworks, "ISO 8583", "Платежи")
+Rel(pharma, batchOrchestrator, "SFTP/CSV", "batch-выгрузки (временно)")
+Rel(infraOps, eventMesh, "Metrics & traces")
+
+' Поэтапное вытеснение легаси
+Rel(legacyBridge, eventMesh, "Публикует события из старого DWH", "планируется отключение через 2 года")
+@enduml

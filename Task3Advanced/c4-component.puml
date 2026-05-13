@@ -1,0 +1,35 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+LAYOUT_TOP_DOWN()
+
+Person(dataSteward, "Data Steward", "Владелец доменных витрин")
+Person(clinicianUser, "Clinician", "Потребляет отчёты (role-based)")
+
+Container_Boundary(portal, "Self-service Data Portal") {
+  Component(authSvc, "Access Gateway", "Keycloak + OPA", "SSO, mTLS, fine-grained scopes")
+  Component(querySvc, "Query Orchestrator", "Go + GraphQL", "Фильтрует запросы, применяет data policies")
+  Component(catalogSvc, "Data Catalog UI", "React + Apollo", "Навигация по дата-продуктам, предпросмотр")
+  Component(reportBuilder, "Composable Report Builder", "React + Vega", "Конструктор дашбордов и выгрузок")
+  Component(notebookProxy, "Secure Notebook Proxy", "JupyterHub", "Запуск управляемых ноутбуков в доменных песочницах")
+  Component(auditSvc, "Usage Ledger", "Kafka + ClickHouse", "Логирование действий, FinOps метрики")
+}
+
+Container_Ext(dataMesh, "Data Mesh Platform", "Lakehouse + dbt", "Самодостаточные дата-продукты")
+Container_Ext(idp, "Corporate IdP", "AD/IDO", "Корпоративная аутентификация")
+Container_Ext(alerting, "Alerting System", "Opsgenie", "Уведомления о нарушениях SLA")
+
+Rel(authSvc, idp, "OIDC/SAML")
+Rel(querySvc, dataMesh, "Trino + Delta Sharing", "Запросы датасетов")
+Rel(catalogSvc, dataMesh, "GraphQL federation", "Метаданные, SLA")
+Rel(reportBuilder, querySvc, "GraphQL")
+Rel(notebookProxy, querySvc, "Signed query links")
+Rel(reportBuilder, auditSvc, "Трекинг обращений")
+Rel(querySvc, auditSvc, "Логирование запросов")
+Rel(auditSvc, alerting, "Webhooks", "SLA breaches")
+
+Rel(dataSteward, catalogSvc, "Публикует дата-продукты")
+Rel(dataSteward, reportBuilder, "Конфигурирует витрины")
+Rel(clinicianUser, authSvc, "Запрос отчёта", "HTTPS + JWT")
+
+@enduml
